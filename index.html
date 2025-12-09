@@ -52,4 +52,128 @@
         .S { background-color: #2ecc71; border: 1px solid #27ae60; }
         .Z { background-color: #e74c3c; border: 1px solid #c0392b; }
 
-        /* 모
+        /* 모바일 컨트롤 버튼 스타일 */
+        #controls {
+            display: flex;
+            justify-content: space-around;
+            width: 300px;
+            padding: 10px 0;
+        }
+
+        #controls button {
+            padding: 10px;
+            font-size: 1em;
+            cursor: pointer;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            box-shadow: 0 3px #2980b9;
+            transition: all 0.1s;
+        }
+        #controls button:active {
+            box-shadow: 0 1px #2980b9;
+            transform: translateY(2px);
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="game-board"></div> 
+        <div id="side-panel">
+            <h2>Score: <span id="score">0</span></h2>
+            <p id="game-status"></p>
+            <button id="start-button">Start Game</button>
+        </div>
+    </div>
+
+    <div id="controls">
+        <button id="left-btn">◀ Left</button>
+        <button id="rotate-btn">🔁 Rotate</button>
+        <button id="right-btn">▶ Right</button>
+        <button id="down-btn">⬇ Drop</button>
+    </div>
+
+    <script>
+        const BOARD_WIDTH = 10;
+        const BOARD_HEIGHT = 20;
+        const boardElement = document.getElementById('game-board');
+        const scoreElement = document.getElementById('score');
+        const statusElement = document.getElementById('game-status');
+        let gameBoard = Array.from({ length: BOARD_HEIGHT }, () => Array(BOARD_WIDTH).fill(0));
+        let currentPiece, currentPos, score = 0;
+        let gameLoopTimer;
+        const START_SPEED = 1000; // 1초마다 떨어짐
+
+        // --- 1. 블록 정의 (Tetrominoes) ---
+        const SHAPES = [
+            { shape: [[1,1,1], [0,1,0], [0,0,0]], className: 'T' },
+            { shape: [[0,0,0,0], [1,1,1,1], [0,0,0,0], [0,0,0,0]], className: 'I' },
+            { shape: [[1,1], [1,1]], className: 'O' },
+            { shape: [[1,0,0], [1,1,1], [0,0,0]], className: 'J' },
+            { shape: [[0,0,1], [1,1,1], [0,0,0]], className: 'L' },
+            { shape: [[0,1,1], [1,1,0], [0,0,0]], className: 'S' },
+            { shape: [[1,1,0], [0,1,1], [0,0,0]], className: 'Z' }
+        ];
+
+        // --- 2. 보드 초기화 및 DOM 요소 생성 ---
+        function initializeBoard() {
+            boardElement.innerHTML = '';
+            gameBoard = Array.from({ length: BOARD_HEIGHT }, () => Array(BOARD_WIDTH).fill(0));
+            for (let r = 0; r < BOARD_HEIGHT; r++) {
+                for (let c = 0; c < BOARD_WIDTH; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    boardElement.appendChild(cell);
+                }
+            }
+        }
+
+        // --- 3. 렌더링: 게임 보드 상태를 화면에 반영 ---
+        function draw() {
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.className = 'cell'; 
+            });
+
+            // 고정된 블록 그리기
+            gameBoard.forEach((row, r) => {
+                row.forEach((cellClass, c) => {
+                    if (cellClass !== 0) {
+                        const cell = document.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
+                        if (cell) cell.classList.add(cellClass);
+                    }
+                });
+            });
+
+            // 현재 움직이는 블록 그리기
+            if (currentPiece) {
+                currentPiece.shape.forEach((row, r) => {
+                    row.forEach((value, c) => {
+                        if (value) {
+                            const actualRow = currentPos.row + r;
+                            const actualCol = currentPos.col + c;
+                            const cell = document.querySelector(`.cell[data-row="${actualRow}"][data-col="${actualCol}"]`);
+                            if (cell) cell.classList.add(currentPiece.className);
+                        }
+                    });
+                });
+            }
+        }
+        
+        // --- 4. 충돌 감지 ---
+        function checkCollision(newShape, newPos) {
+            if (!newShape) newShape = currentPiece.shape;
+            if (!newPos) newPos = currentPos;
+
+            for (let r = 0; r < newShape.length; r++) {
+                for (let c = 0; c < newShape[r].length; c++) {
+                    if (newShape[r][c]) {
+                        const actualRow = newPos.row + r;
+                        const actualCol = newPos.col + c;
+
+                        if (actualCol < 0 || actualCol >= BOARD_WIDTH || actualRow >= BOARD_HEIGHT) {
+                            return true;
+                        }
+                        if (actualRow
