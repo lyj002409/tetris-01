@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>작동하는 모바일 테트리스</title>
+    <title>깃허브 제출용 작동 테트리스</title>
     
     <style>
         body {
@@ -103,7 +103,7 @@
         let gameBoard = Array.from({ length: BOARD_HEIGHT }, () => Array(BOARD_WIDTH).fill(0));
         let currentPiece, currentPos, score = 0;
         let gameLoopTimer;
-        const START_SPEED = 1000; // 1초마다 떨어짐
+        const START_SPEED = 1000; 
 
         // --- 1. 블록 정의 (Tetrominoes) ---
         const SHAPES = [
@@ -131,7 +131,7 @@
             }
         }
 
-        // --- 3. 렌더링: 게임 보드 상태를 화면에 반영 ---
+        // --- 3. 렌더링 (그리기) ---
         function draw() {
             document.querySelectorAll('.cell').forEach(cell => {
                 cell.className = 'cell'; 
@@ -176,4 +176,138 @@
                         if (actualCol < 0 || actualCol >= BOARD_WIDTH || actualRow >= BOARD_HEIGHT) {
                             return true;
                         }
-                        if (actualRow
+                        if (actualRow >= 0 && actualRow < BOARD_HEIGHT && actualCol >= 0 && actualCol < BOARD_WIDTH && gameBoard[actualRow][actualCol] !== 0) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // --- 5. 블록 고정 ---
+        function fixPiece() {
+            currentPiece.shape.forEach((row, r) => {
+                row.forEach((value, c) => {
+                    if (value) {
+                        const actualRow = currentPos.row + r;
+                        const actualCol = currentPos.col + c;
+                        if (actualRow < BOARD_HEIGHT && actualCol < BOARD_WIDTH) {
+                            gameBoard[actualRow][actualCol] = currentPiece.className;
+                        }
+                    }
+                });
+            });
+            checkLines(); 
+            spawnNewPiece(); 
+        }
+
+        // --- 6. 줄 제거 ---
+        function checkLines() {
+            let linesCleared = 0;
+            for (let r = BOARD_HEIGHT - 1; r >= 0; r--) {
+                if (gameBoard[r].every(cell => cell !== 0)) {
+                    gameBoard.splice(r, 1);
+                    gameBoard.unshift(Array(BOARD_WIDTH).fill(0));
+                    linesCleared++;
+                    r++; 
+                }
+            }
+            if (linesCleared > 0) {
+                score += linesCleared * 100;
+                scoreElement.textContent = score;
+            }
+        }
+
+        // --- 7. 블록 이동/회전 함수 ---
+        function move(direction) {
+            if (!currentPiece || !gameLoopTimer) return;
+            const newPos = { row: currentPos.row, col: currentPos.col + direction };
+            if (!checkCollision(currentPiece.shape, newPos)) {
+                currentPos = newPos;
+            }
+            draw();
+        }
+
+        function drop() {
+            if (!currentPiece || !gameLoopTimer) return;
+            const newPos = { row: currentPos.row + 1, col: currentPos.col };
+            if (!checkCollision(currentPiece.shape, newPos)) {
+                currentPos = newPos;
+            } else {
+                fixPiece(); 
+            }
+            draw();
+        }
+
+        function rotate() {
+            if (!currentPiece || !gameLoopTimer) return;
+            const newShape = currentPiece.shape[0].map((val, index) => 
+                currentPiece.shape.map(row => row[index]).reverse()
+            );
+            if (!checkCollision(newShape, currentPos)) {
+                currentPiece.shape = newShape;
+            }
+            draw();
+        }
+
+        // --- 8. 새 블록 생성 ---
+        function spawnNewPiece() {
+            const randomIndex = Math.floor(Math.random() * SHAPES.length);
+            currentPiece = JSON.parse(JSON.stringify(SHAPES[randomIndex])); 
+            currentPos = { row: 0, col: Math.floor(BOARD_WIDTH / 2) - 2 };
+
+            if (checkCollision(currentPiece.shape, currentPos)) {
+                // 게임 오버
+                clearInterval(gameLoopTimer);
+                gameLoopTimer = null;
+                statusElement.textContent = "GAME OVER!";
+                alert("GAME OVER! Score: " + score);
+                return false;
+            }
+            return true;
+        }
+
+        // --- 9. 게임 루프 ---
+        function gameLoop() {
+            drop(); // 블록을 1초마다 떨어뜨림
+        }
+
+        // --- 10. 게임 시작/재시작 ---
+        function startGame() {
+            clearInterval(gameLoopTimer);
+            gameLoopTimer = null;
+            
+            initializeBoard();
+            score = 0;
+            scoreElement.textContent = score;
+            statusElement.textContent = "Playing...";
+            
+            if (spawnNewPiece()) {
+                draw();
+                gameLoopTimer = setInterval(gameLoop, START_SPEED);
+            }
+        }
+
+        // --- 11. 이벤트 리스너 연결 ---
+        document.getElementById('start-button').addEventListener('click', startGame);
+        document.getElementById('left-btn').addEventListener('click', () => { move(-1); });
+        document.getElementById('right-btn').addEventListener('click', () => { move(1); });
+        document.getElementById('rotate-btn').addEventListener('click', rotate);
+        document.getElementById('down-btn').addEventListener('click', () => { drop(); }); 
+
+        // 키보드 이벤트 (PC 테스트용)
+        document.addEventListener('keydown', (e) => {
+            if (!gameLoopTimer) return;
+            if (e.key === 'ArrowLeft') move(-1);
+            else if (e.key === 'ArrowRight') move(1);
+            else if (e.key === 'ArrowUp') rotate();
+            else if (e.key === 'ArrowDown') drop();
+        });
+
+        // 초기 화면 설정
+        initializeBoard();
+        statusElement.textContent = "Press Start to play!";
+    </script>
+</body>
+</html>
